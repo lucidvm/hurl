@@ -74,13 +74,11 @@ class ScreamChannel implements AsyncIterable<PacketData> {
 
 }
 
-export class ScreamSink extends EventEmitter {
+export class ScreamSink {
 
     private channels: { [key: string]: ScreamChannel; } = {};
 
     constructor(readonly gw: AudioGateway) {
-        super();
-
         const sock = dgram.createSocket("udp4");
         sock.bind(4011);
         sock.on("message", (msg, remote) => {
