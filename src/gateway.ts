@@ -88,7 +88,7 @@ export class AudioGateway {
     private broadcast(channel: string, event: string, data: any) {
         for (const client of this.clients) {
             if (client.channel === channel) {
-                client.ws.send({ event, data });
+                client.ws.send(JSON.stringify({ event, data }));
             }
         }
     }
@@ -103,28 +103,32 @@ export class AudioGateway {
 
     init(channel: string, mode: ChannelMode, stream: AsyncIterable<PacketData>): ChannelContext {
         var ctx = this.channels[channel];
+        var n = false;
 
         if (ctx == null) {
             ctx = {
-                encoder: new Encoder({
-                    sample_rate: 48000,
-                    channels: mode.channels
-                }),
-                mode
+                encoder: null,
+                mode: null
             };
-            ctx.encoder.bitrate = 48000;
             this.channels[channel] = ctx;
+            n = true;
         }
-        else if (ctx.encoder.channels !== mode.channels) {
+
+        ctx.mode = mode;
+
+        if (n || ctx.encoder.channels !== mode.channels) {
             ctx.encoder = new Encoder({
                 sample_rate: 48000,
-                channels: mode.channels
+                channels: mode.channels,
+                application: "audio"
             });
-            ctx.encoder.bitrate = 48000;
+            ctx.encoder.bitrate = 64000 * mode.channels;
+            ctx.encoder.signal = "music";
+            ctx.encoder.reset();
         }
 
         const _this = this;
-        const procstream = ctx.encoder.encode_pcm_stream(480, {
+        const procstream = ctx.encoder.encode_pcm_stream(960, {
             [Symbol.asyncIterator]() {
                 const iter = stream[Symbol.asyncIterator]();
                 return {
@@ -135,10 +139,10 @@ export class AudioGateway {
 
                         if (mode.channels !== ctx.mode.channels || mode.rate !== ctx.mode.rate) {
                             // mode switch, thread the needle once more...
-                            console.warn("reinitializing...");
+                            console.warn("reinitializing...", mode, ctx.mode);
                             _this.init(channel, mode, stream);
                             // FIXME: information loss during mode switches
-                            return { done: true, value };
+                            return { done: true, value: null };
                         }
 
                         var value = new Int16Array(data.length);
@@ -155,6 +159,7 @@ export class AudioGateway {
         });
         setTimeout(async () => {
             for await (const chunk of procstream) {
+                if (chunk == null) break;
                 this.broadcastFrame(channel, Buffer.from(chunk));
             }
         });
