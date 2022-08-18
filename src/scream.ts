@@ -1,4 +1,3 @@
-import { EventEmitter } from "events";
 import dgram from "dgram";
 
 import { AudioGateway, PacketData } from "./gateway";
@@ -78,9 +77,9 @@ export class ScreamSink {
 
     private channels: { [key: string]: ScreamChannel; } = {};
 
-    constructor(readonly gw: AudioGateway) {
+    constructor(readonly gw: AudioGateway, port = 4011) {
         const sock = dgram.createSocket("udp4");
-        sock.bind(4011);
+        sock.bind(port);
         sock.on("message", (msg, remote) => {
             if (!(remote.address in this.channels)) {
                 // unrecognized source address
