@@ -101,7 +101,7 @@ export class AudioGateway {
         }
     }
 
-    init(channel: string, mode: ChannelMode, stream: AsyncIterable<PacketData>): ChannelContext {
+    init(channel: string, mode: ChannelMode, instream: AsyncIterable<PacketData>): ChannelContext {
         var ctx = this.channels[channel];
         var n = false;
 
@@ -128,37 +128,29 @@ export class AudioGateway {
         }
 
         const _this = this;
-        const procstream = ctx.encoder.encode_pcm_stream(960, {
-            [Symbol.asyncIterator]() {
-                const iter = stream[Symbol.asyncIterator]();
-                return {
-                    async next() {
-                        const x: IteratorResult<PacketData, PacketData> = await iter.next();
-                        var data = x.value.data;
-                        const mode = x.value.mode;
+        async function* pcmstream(): AsyncGenerator<Int16Array> {
+            for await (const { data, mode } of instream) {
+                // check for mode switch and, if necessary, thread the needle once more
+                if (mode.channels !== ctx.mode.channels || mode.rate !== ctx.mode.rate) {
+                    console.warn("reinitializing...", mode, ctx.mode);
+                    _this.init(channel, mode, instream);
+                    // FIXME: information loss during mode switches
+                    return null;
+                }
 
-                        if (mode.channels !== ctx.mode.channels || mode.rate !== ctx.mode.rate) {
-                            // mode switch, thread the needle once more...
-                            console.warn("reinitializing...", mode, ctx.mode);
-                            _this.init(channel, mode, stream);
-                            // FIXME: information loss during mode switches
-                            return { done: true, value: null };
-                        }
-
-                        var value = new Int16Array(data.length);
-                        for (var i = 0; i < data.length; i++) {
-                            const x = Math.floor(data[i] * 0x7FFF);
-                            value[i] = x;
-                            if (value[i] !== x) throw new Error("OVERFLOW " + data[i] + " " + x);
-                        }
-
-                        return { done: x.done, value };
-                    }
-                };
+                // convert chunk from f32 to i16
+                var value = new Int16Array(data.length);
+                for (var i = 0; i < data.length; i++) {
+                    const x = Math.floor(data[i] * 0x7FFF);
+                    value[i] = x;
+                    if (value[i] !== x) throw new Error("OVERFLOW " + data[i] + " " + x);
+                }
+                yield value;
             }
-        });
+        }
+        const opusstream = ctx.encoder.encode_pcm_stream(960, pcmstream());
         setTimeout(async () => {
-            for await (const chunk of procstream) {
+            for await (const chunk of opusstream) {
                 if (chunk == null) break;
                 this.broadcastFrame(channel, Buffer.from(chunk));
             }

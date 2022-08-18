@@ -2,10 +2,12 @@ import dgram from "dgram";
 
 import { AudioGateway, PacketData } from "./gateway";
 
+const PCMSTART = 5;
+
 class ScreamChannel implements AsyncIterable<PacketData> {
 
     private chunks: PacketData[] = [];
-    private pending: (PacketData) => void = null;
+    private pending: (packet: PacketData) => void = null;
 
     constructor(readonly gw: AudioGateway, readonly channel: string) {
         gw.init(channel, { channels: 2, rate: 48000 }, this);
@@ -16,8 +18,8 @@ class ScreamChannel implements AsyncIterable<PacketData> {
         const mult = msg[0] & 0b01111111;
         const depth = msg[1];
         const chans = msg[2] as 1 | 2;
-        const data = msg.subarray(6);
-        const size = data.length / (depth / 8);
+        const data = msg.buffer.slice(PCMSTART);
+        const size = (msg.length - PCMSTART) / (depth / 8);
         const floatize = (1 << (depth - 1));
 
         if (chans > 2) {
@@ -27,9 +29,9 @@ class ScreamChannel implements AsyncIterable<PacketData> {
 
         var input: ArrayBufferView;
         switch (depth) {
-            case 8: input = new Int8Array(data.buffer.slice(5)); break;
-            case 16: input = new Int16Array(data.buffer.slice(5)); break;
-            case 32: input = new Int32Array(data.buffer.slice(5)); break;
+            case 8: input = new Int8Array(data); break;
+            case 16: input = new Int16Array(data); break;
+            case 32: input = new Int32Array(data); break;
             default:
                 // unsupported
                 console.error("unsupported width");
@@ -89,7 +91,7 @@ export class ScreamSink {
         });
     }
 
-    associate(channel: string, ip: string) {
+    associate(channel: string, ip: string): ScreamChannel {
         this.channels[ip] = new ScreamChannel(this.gw, channel);
         return this.channels[ip];
     }
