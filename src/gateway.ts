@@ -122,7 +122,7 @@ export class AudioGateway {
                 channels: mode.channels,
                 application: "audio"
             });
-            ctx.encoder.bitrate = 64000 * mode.channels;
+            ctx.encoder.bitrate = 48000;
             ctx.encoder.signal = "music";
             ctx.encoder.reset();
         }
@@ -148,7 +148,7 @@ export class AudioGateway {
                 yield value;
             }
         }
-        const opusstream = ctx.encoder.encode_pcm_stream(960, pcmstream());
+        const opusstream = ctx.encoder.encode_pcm_stream(240, pcmstream());
         setTimeout(async () => {
             for await (const chunk of opusstream) {
                 if (chunk == null) break;
