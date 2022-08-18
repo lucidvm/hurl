@@ -48,9 +48,9 @@ export class AudioGateway {
                 this.clients.splice(index, 1);
             });
             ws.on("message", payload => {
-                if (typeof payload !== "string") return;
+                var payloadstr = payload.toString();
                 try {
-                    const msg = JSON.parse(payload);
+                    const msg = JSON.parse(payloadstr);
                     if (typeof msg.event !== "string" || typeof msg.data !== "object") {
                         throw new Error("malformed command received");
                     }
@@ -60,6 +60,7 @@ export class AudioGateway {
                             if (typeof data.channel !== "string") {
                                 throw new Error("non-string channel provided");
                             }
+                            ctx.channel = data.channel;
                             if (data.channel in this.channels) {
                                 const chan = this.channels[data.channel];
                                 ws.send(JSON.stringify({

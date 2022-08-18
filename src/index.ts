@@ -11,7 +11,7 @@ const config: {
 
 const gw = new AudioGateway();
 const sink = new ScreamSink(gw, config.port);
-for (const channel in config) {
-    const ip = config[channel];
+for (const channel in config.channels) {
+    const ip = config.channels[channel];
     sink.associate(channel, ip);
 }
