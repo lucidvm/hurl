@@ -1,0 +1,18 @@
+{
+  "name": "@lucidvm/hurl",
+  "version": "0.1.0",
+  "description": "Opus over WebSocket hell",
+  "main": "dist/index.js",
+  "author": "dither",
+  "license": "BSD-3-Clause",
+  "private": true,
+  "devDependencies": {
+    "@types/node": "^18.7.6",
+    "@types/ws": "^8.5.3",
+    "typescript": "^4.7.4"
+  },
+  "dependencies": {
+    "@evan/opus": "^1.0.2",
+    "ws": "^8.8.1"
+  }
+}
