@@ -26,8 +26,6 @@ class ScreamChannel implements AsyncIterable<PacketData> {
             return;
         }
 
-        //console.log(data, data.buffer);
-
         var input: ArrayBufferView;
         switch (depth) {
             case 8: input = new Int8Array(data.buffer.slice(5)); break;
@@ -42,9 +40,7 @@ class ScreamChannel implements AsyncIterable<PacketData> {
         const output = new Float32Array(size);
         for (var i = 0; i < output.length; i++) {
             output[i] = input[i] / floatize;
-            //console.log(input, depth, input[i].toString(16), floatize.toString(16));
         }
-        //console.log(floatize.toString(16));
 
         const packet = {
             data: output,
